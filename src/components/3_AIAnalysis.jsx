@@ -1,127 +1,140 @@
-import React, { useState, useEffect } from 'react';
-import { BrainCircuit, CheckCircle2, Loader2, Database, ShieldCheck, AlertTriangle } from 'lucide-react';
+import React, { useState } from 'react';
+import { BrainCircuit, CheckCircle2, Loader2, Database, ShieldCheck, AlertOctagon, ArrowRight } from 'lucide-react';
 import { merchantProfiles } from '../data/mockData';
 
 export default function AIAnalysis({ onNext, profileType, updateProfileData }) {
-  const [analysisStage, setAnalysisStage] = useState('FETCHING_DATA');
-  const [showFallbackNote, setShowFallbackNote] = useState(false);
-  const merchantData = merchantProfiles[profileType];
+  // Stages: 'SHOW_AA_DATA' -> 'ANALYZING' -> 'ERROR_WARNING' -> 'RESULTS'
+  const [stage, setStage] = useState('SHOW_AA_DATA');
+  
+  // Bulletproof fallback to prevent white screens if profileType gets lost
+  const safeProfileType = profileType || 'good';
+  const merchantData = merchantProfiles[safeProfileType];
 
-  useEffect(() => {
-    const runAIEngine = async () => {
-      // Stage 1: ULI Handshake (Simulated)
-      await new Promise(resolve => setTimeout(resolve, 1200));
-      setAnalysisStage('SHOWING_DATA');
+  const triggerAI = async () => {
+    setStage('ANALYZING');
+
+    // 6-second timeout so the judges don't wait forever
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+    try {
+      const response = await fetch("https://paytm-klvx.onrender.com/predict", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-KEY': 'paytm_hackathon_secret_2026'
+        },
+        body: JSON.stringify({ data: merchantData }),
+        signal: controller.signal
+      });
+
+      if (!response.ok) throw new Error("Backend Error");
       
-      // Stage 2: Preview Raw Data (Simulated)
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      setAnalysisStage('RUNNING_MODEL');
+      const result = await response.json();
+      clearTimeout(timeoutId);
 
-      // Stage 3: Actual Backend Call with a 5-second Timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      // Update state with real data safely
+      updateProfileData(safeProfileType, {
+        eligibleLimit: result.credit_limit || merchantData.eligibleLimit,
+        creditScore: result.credit_score || merchantData.creditScore,
+        aiInsights: Array.isArray(result.insights) && result.insights.length > 0 ? result.insights : merchantData.aiInsights,
+        riskProfile: result.risk_profile || merchantData.riskProfile
+      });
 
-      try {
-        const response = await fetch("https://paytm-klvx.onrender.com/predict", {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-API-KEY': 'paytm_hackathon_secret_2026'
-          },
-          body: JSON.stringify({ data: merchantData }),
-          signal: controller.signal
-        });
+      setStage('RESULTS');
 
-        if (!response.ok) throw new Error("Server Error");
-        
-        const result = await response.json();
-        clearTimeout(timeoutId);
+    } catch (err) {
+      console.warn("AI Engine failed, triggering explicit warning.");
+      // Show the explicit error screen
+      setStage('ERROR_WARNING');
+      
+      // Keep the error on screen for 3.5 seconds, then move to results using fallback data
+      setTimeout(() => {
+        setStage('RESULTS');
+      }, 3500);
+    }
+  };
 
-        updateProfileData(profileType, {
-          eligibleLimit: result.credit_limit,
-          creditScore: result.credit_score,
-          aiInsights: result.insights,
-          riskProfile: result.risk_profile
-        });
+  // Safe mapping array to prevent React crashes
+  const insightsToRender = Array.isArray(merchantData?.aiInsights) 
+    ? merchantData.aiInsights 
+    : ["Strong repayment probability", "Stable cashflow history", "Verified GST details"];
 
-      } catch (err) {
-        console.warn("Backend unavailable, using prototype fallback");
-        setShowFallbackNote(true);
-        // We do NOT call updateProfileData here because the mockData.js 
-        // already contains the default values for the profile.
-      } finally {
-        setTimeout(() => setAnalysisStage('COMPLETED'), 1000);
-      }
-    };
-
-    runAIEngine();
-  }, [profileType]);
-
-  // --- STAGE 1 & 3: LOADING SCREENS ---
-  if (analysisStage === 'FETCHING_DATA' || analysisStage === 'RUNNING_MODEL') {
+  // --- STAGE 1: ACCOUNT AGGREGATOR DATA ---
+  if (stage === 'SHOW_AA_DATA') {
     return (
-      <div className="h-full flex flex-col items-center justify-center bg-gray-900 text-white p-6 text-center">
-        {analysisStage === 'FETCHING_DATA' ? 
-          <Database className="w-20 h-20 text-[#00B9F1] animate-bounce mb-6" /> : 
-          <BrainCircuit className="w-20 h-20 text-[#00B9F1] animate-pulse mb-6" />
-        }
-        <h2 className="text-2xl font-bold mb-2">
-          {analysisStage === 'FETCHING_DATA' ? "ULI Handshake..." : "AI Engine Crunching..."}
-        </h2>
-        <p className="text-gray-400 text-sm animate-pulse">
-          {analysisStage === 'FETCHING_DATA' ? "Pulling GST & Bank Records" : "Calculating Risk Probability"}
-        </p>
+      <div className="h-full bg-gray-50 flex flex-col p-6 overflow-y-auto">
+        <div className="flex items-center space-x-2 mb-8">
+          <Database className="w-6 h-6 text-[#002970]" />
+          <h2 className="text-xl font-bold text-gray-800">Account Aggregator Data</h2>
+        </div>
+        
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 mb-6">
+          <div className="flex items-center space-x-2 mb-4 text-green-600 font-bold bg-green-50 p-3 rounded-lg">
+            <ShieldCheck className="w-5 h-5" />
+            <span>ULI Data Successfully Fetched</span>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="flex justify-between border-b pb-2">
+              <span className="text-gray-500">Paid-in Capital</span>
+              <span className="font-bold">₹{merchantData.Paid_in_capital?.toLocaleString() || '0'}</span>
+            </div>
+            <div className="flex justify-between border-b pb-2">
+              <span className="text-gray-500">Tax Defaults (1 Yr)</span>
+              <span className={`font-bold ${merchantData.Overdue_tax_num_1year > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                {merchantData.Overdue_tax_num_1year || '0'}
+              </span>
+            </div>
+            <div className="flex justify-between border-b pb-2">
+              <span className="text-gray-500">Business Vintage</span>
+              <span className="font-bold">{merchantData.Establishment_Duration || '0'} Years</span>
+            </div>
+          </div>
+        </div>
+
+        <button 
+          onClick={triggerAI} 
+          className="mt-auto w-full bg-[#002970] text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center space-x-2 hover:bg-blue-900 transition-all"
+        >
+          <BrainCircuit className="w-5 h-5" />
+          <span>Pass Data to AI Prediction Engine</span>
+        </button>
       </div>
     );
   }
 
-  // --- STAGE 2: DATA PREVIEW (The "Proof") ---
-  if (analysisStage === 'SHOWING_DATA') {
+  // --- STAGE 2: LOADING ---
+  if (stage === 'ANALYZING') {
     return (
-      <div className="h-full flex flex-col bg-gray-900 text-white p-6">
-        <div className="flex items-center space-x-2 mb-8">
-          <ShieldCheck className="text-green-400 w-6 h-6" />
-          <h2 className="text-xl font-bold">AA Data Received</h2>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-gray-800 p-4 rounded-xl border border-gray-700">
-            <p className="text-xs text-gray-400 mb-1">Paid-in Capital</p>
-            <p className="text-lg font-bold">₹{merchantData.Paid_in_capital.toLocaleString()}</p>
-          </div>
-          <div className="bg-gray-800 p-4 rounded-xl border border-gray-700">
-            <p className="text-xs text-gray-400 mb-1">GSTR Status</p>
-            <p className="text-lg font-bold text-green-400">Clear</p>
-          </div>
-          <div className="bg-gray-800 p-4 rounded-xl border border-gray-700">
-            <p className="text-xs text-gray-400 mb-1">Tax Defaults</p>
-            <p className="text-lg font-bold text-red-400">{merchantData.Overdue_tax_num_1year}</p>
-          </div>
-          <div className="bg-gray-800 p-4 rounded-xl border border-gray-700">
-            <p className="text-xs text-gray-400 mb-1">Vintage</p>
-            <p className="text-lg font-bold">{merchantData.Establishment_Duration} Yrs</p>
-          </div>
-        </div>
-        <div className="mt-auto flex items-center justify-center text-[#00B9F1] space-x-2 animate-pulse font-bold">
-          <BrainCircuit className="w-5 h-5" />
-          <span>Starting Prediction Model...</span>
-        </div>
+      <div className="h-full flex flex-col items-center justify-center bg-gray-900 text-white p-6 text-center">
+        <Loader2 className="w-20 h-20 text-[#00B9F1] animate-spin mb-6" />
+        <h2 className="text-2xl font-bold mb-2">XGBoost & Gemini Processing...</h2>
+        <p className="text-gray-400 text-sm animate-pulse">Computing Risk Probability Map</p>
+      </div>
+    );
+  }
+
+  // --- STAGE 3: EXPLICIT ERROR NOTIFICATION ---
+  if (stage === 'ERROR_WARNING') {
+    return (
+      <div className="h-full flex flex-col items-center justify-center bg-red-50 p-6 text-center">
+        <AlertOctagon className="w-24 h-24 text-red-500 mb-6 animate-pulse" />
+        <h2 className="text-2xl font-bold text-red-700 mb-4">AI Backend Unavailable</h2>
+        <p className="text-red-600 mb-8 font-medium">
+          Failed to establish connection with Gemini/Render. 
+        </p>
+        <p className="text-gray-600 text-sm font-bold flex items-center space-x-2">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          <span>Proceeding with prototype cache...</span>
+        </p>
       </div>
     );
   }
 
   // --- STAGE 4: FINAL RESULTS ---
   return (
-    <div className="h-full bg-gray-50 flex flex-col p-6 overflow-y-auto relative">
-      {/* "OFFLINE" POPUP NOTIFICATION */}
-      {showFallbackNote && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 w-11/12 bg-amber-50 border border-amber-200 p-3 rounded-xl shadow-lg z-50 flex items-center space-x-3 animate-bounce">
-          <AlertTriangle className="text-amber-600 w-5 h-5 flex-shrink-0" />
-          <p className="text-[10px] leading-tight text-amber-800 font-medium">
-            Backend connection slow. Displaying high-fidelity prototype predictions.
-          </p>
-        </div>
-      )}
-
+    <div className="h-full bg-gray-50 flex flex-col p-6 overflow-y-auto">
       <div className="flex items-center space-x-2 mb-6">
         <div className="bg-[#002970] p-2 rounded-lg text-white"><BrainCircuit className="w-5 h-5" /></div>
         <h2 className="text-xl font-bold text-gray-800">AI Verified Analysis</h2>
@@ -136,7 +149,7 @@ export default function AIAnalysis({ onNext, profileType, updateProfileData }) {
       </div>
 
       <div className="space-y-3 mb-6">
-        {merchantData.aiInsights.map((insight, index) => (
+        {insightsToRender.map((insight, index) => (
           <div key={index} className="flex items-start space-x-3 bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
             <CheckCircle2 className="w-5 h-5 text-[#00B9F1] flex-shrink-0 mt-0.5" />
             <p className="text-sm text-gray-700 font-medium">{insight}</p>
@@ -146,11 +159,12 @@ export default function AIAnalysis({ onNext, profileType, updateProfileData }) {
 
       <div className="bg-[#002970] rounded-2xl p-6 text-white text-center mb-6 shadow-xl">
         <p className="text-blue-200 text-sm mb-1">Approved Credit Line</p>
-        <h2 className="text-4xl font-extrabold">₹{(merchantData.eligibleLimit / 100000).toFixed(1)} Lakh</h2>
+        <h2 className="text-4xl font-extrabold">₹{(merchantData.eligibleLimit / 100000 || 0).toFixed(1)} Lakh</h2>
       </div>
 
-      <button onClick={onNext} className="w-full bg-[#00B9F1] text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-none transition-all mt-auto">
-        View Lender Offers
+      <button onClick={onNext} className="w-full bg-[#00B9F1] text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-none transition-all mt-auto flex justify-center items-center space-x-2">
+        <span>View Lender Offers</span>
+        <ArrowRight className="w-5 h-5" />
       </button>
     </div>
   );

@@ -104,17 +104,6 @@ export default function Soundbox({ offer, onNext }) {
           )}
         </div>
       </div>
-
-      {/* Skip/Next for safety during demo */}
-      <div className="absolute bottom-6 right-6 z-10">
-         <button 
-           onClick={onNext}
-           className="text-white/50 hover:text-white flex items-center text-xs font-bold transition-colors"
-         >
-           Skip <ArrowRight className="w-3 h-3 ml-1" />
-         </button>
-      </div>
-      
     </div>
   );
 }
