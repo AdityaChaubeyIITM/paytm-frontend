@@ -10,10 +10,18 @@ export default function AIAnalysis({ onNext, profileType, updateProfileData }) {
   const safeProfileType = profileType || 'good';
   const merchantData = merchantProfiles[safeProfileType];
 
+  // --- CREDIBLE DATA INJECTION ---
+  // If your mockData doesn't have the XGBoost keys, we use these realistic numbers for the demo
+  const credibleAAData = {
+    good: { capital: 1250000, taxDefaults: 0, vintage: 5 },
+    medium: { capital: 450000, taxDefaults: 1, vintage: 2 },
+    bad: { capital: 80000, taxDefaults: 3, vintage: 1 }
+  };
+  const displayData = credibleAAData[safeProfileType] || credibleAAData.good;
+
   const triggerAI = async () => {
     setStage('ANALYZING');
 
-    // 6-second timeout so the judges don't wait forever
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 6000);
 
@@ -24,7 +32,13 @@ export default function AIAnalysis({ onNext, profileType, updateProfileData }) {
           'Content-Type': 'application/json',
           'X-API-KEY': 'paytm_hackathon_secret_2026'
         },
-        body: JSON.stringify({ data: merchantData }),
+        // We pass the credible data mixed with your mock data so the backend has numbers to chew on
+        body: JSON.stringify({ data: { 
+          ...merchantData, 
+          Paid_in_capital: merchantData?.Paid_in_capital || displayData.capital,
+          Overdue_tax_num_1year: merchantData?.Overdue_tax_num_1year ?? displayData.taxDefaults,
+          Establishment_Duration: merchantData?.Establishment_Duration || displayData.vintage
+        }}),
         signal: controller.signal
       });
 
@@ -33,7 +47,6 @@ export default function AIAnalysis({ onNext, profileType, updateProfileData }) {
       const result = await response.json();
       clearTimeout(timeoutId);
 
-      // Update state with real data safely
       updateProfileData(safeProfileType, {
         eligibleLimit: result.credit_limit || merchantData.eligibleLimit,
         creditScore: result.credit_score || merchantData.creditScore,
@@ -45,17 +58,13 @@ export default function AIAnalysis({ onNext, profileType, updateProfileData }) {
 
     } catch (err) {
       console.warn("AI Engine failed, triggering explicit warning.");
-      // Show the explicit error screen
       setStage('ERROR_WARNING');
-      
-      // Keep the error on screen for 3.5 seconds, then move to results using fallback data
       setTimeout(() => {
         setStage('RESULTS');
       }, 3500);
     }
   };
 
-  // Safe mapping array to prevent React crashes
   const insightsToRender = Array.isArray(merchantData?.aiInsights) 
     ? merchantData.aiInsights 
     : ["Strong repayment probability", "Stable cashflow history", "Verified GST details"];
@@ -78,17 +87,18 @@ export default function AIAnalysis({ onNext, profileType, updateProfileData }) {
           <div className="space-y-4">
             <div className="flex justify-between border-b pb-2">
               <span className="text-gray-500">Paid-in Capital</span>
-              <span className="font-bold">₹{merchantData.Paid_in_capital?.toLocaleString() || '0'}</span>
+              {/* Uses real data if it exists, otherwise uses our credible fallback map */}
+              <span className="font-bold">₹{(merchantData?.Paid_in_capital || displayData.capital).toLocaleString()}</span>
             </div>
             <div className="flex justify-between border-b pb-2">
               <span className="text-gray-500">Tax Defaults (1 Yr)</span>
-              <span className={`font-bold ${merchantData.Overdue_tax_num_1year > 0 ? 'text-red-500' : 'text-green-500'}`}>
-                {merchantData.Overdue_tax_num_1year || '0'}
+              <span className={`font-bold ${(merchantData?.Overdue_tax_num_1year ?? displayData.taxDefaults) > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                {merchantData?.Overdue_tax_num_1year ?? displayData.taxDefaults}
               </span>
             </div>
             <div className="flex justify-between border-b pb-2">
               <span className="text-gray-500">Business Vintage</span>
-              <span className="font-bold">{merchantData.Establishment_Duration || '0'} Years</span>
+              <span className="font-bold">{merchantData?.Establishment_Duration || displayData.vintage} Years</span>
             </div>
           </div>
         </div>
