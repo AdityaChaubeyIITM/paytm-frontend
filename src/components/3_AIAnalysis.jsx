@@ -113,7 +113,7 @@ export default function AIAnalysis({ onNext, profileType, updateProfileData }) {
     return (
       <div className="h-full flex flex-col items-center justify-center bg-gray-900 text-white p-6 text-center">
         <Loader2 className="w-20 h-20 text-[#00B9F1] animate-spin mb-6" />
-        <h2 className="text-2xl font-bold mb-2">NeuroLink AI & Perplexity Processing...</h2>
+        <h2 className="text-2xl font-bold mb-2">Neurosymbolic AI & Perplexity Processing...</h2>
         <p className="text-gray-400 text-sm animate-pulse">Computing Risk Probability Map</p>
       </div>
     );
