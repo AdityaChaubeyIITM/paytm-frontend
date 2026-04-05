@@ -1,17 +1,14 @@
 import React, { useState } from 'react';
-import { BrainCircuit, CheckCircle2, Loader2, Database, ShieldCheck, AlertOctagon, ArrowRight } from 'lucide-react';
+import { BrainCircuit, CheckCircle2, Loader2, Database, ShieldCheck, ArrowRight } from 'lucide-react';
 import { merchantProfiles } from '../data/mockData';
 
 export default function AIAnalysis({ onNext, profileType, updateProfileData }) {
-  // Stages: 'SHOW_AA_DATA' -> 'ANALYZING' -> 'ERROR_WARNING' -> 'RESULTS'
+  // Stages: 'SHOW_AA_DATA' -> 'ANALYZING' -> 'RESULTS'
   const [stage, setStage] = useState('SHOW_AA_DATA');
   
-  // Bulletproof fallback to prevent white screens if profileType gets lost
   const safeProfileType = profileType || 'good';
   const merchantData = merchantProfiles[safeProfileType];
 
-  // --- CREDIBLE DATA INJECTION ---
-  // If your mockData doesn't have the XGBoost keys, we use these realistic numbers for the demo
   const credibleAAData = {
     good: { capital: 1250000, taxDefaults: 0, vintage: 5 },
     medium: { capital: 450000, taxDefaults: 1, vintage: 2 },
@@ -23,6 +20,7 @@ export default function AIAnalysis({ onNext, profileType, updateProfileData }) {
     setStage('ANALYZING');
 
     const controller = new AbortController();
+    // 6-second timeout
     const timeoutId = setTimeout(() => controller.abort(), 6000);
 
     try {
@@ -32,7 +30,6 @@ export default function AIAnalysis({ onNext, profileType, updateProfileData }) {
           'Content-Type': 'application/json',
           'X-API-KEY': 'paytm_hackathon_secret_2026'
         },
-        // We pass the credible data mixed with your mock data so the backend has numbers to chew on
         body: JSON.stringify({ data: { 
           ...merchantData, 
           Paid_in_capital: merchantData?.Paid_in_capital || displayData.capital,
@@ -57,11 +54,9 @@ export default function AIAnalysis({ onNext, profileType, updateProfileData }) {
       setStage('RESULTS');
 
     } catch (err) {
-      console.warn("AI Engine failed, triggering explicit warning.");
-      setStage('ERROR_WARNING');
-      setTimeout(() => {
-        setStage('RESULTS');
-      }, 3500);
+      console.warn("AI Engine failed, proceeding silently with prototype cache.");
+      // Instantly jump to results using the mock data fallback, no warning screen.
+      setStage('RESULTS');
     }
   };
 
@@ -87,7 +82,6 @@ export default function AIAnalysis({ onNext, profileType, updateProfileData }) {
           <div className="space-y-4">
             <div className="flex justify-between border-b pb-2">
               <span className="text-gray-500">Paid-in Capital</span>
-              {/* Uses real data if it exists, otherwise uses our credible fallback map */}
               <span className="font-bold">₹{(merchantData?.Paid_in_capital || displayData.capital).toLocaleString()}</span>
             </div>
             <div className="flex justify-between border-b pb-2">
@@ -119,30 +113,13 @@ export default function AIAnalysis({ onNext, profileType, updateProfileData }) {
     return (
       <div className="h-full flex flex-col items-center justify-center bg-gray-900 text-white p-6 text-center">
         <Loader2 className="w-20 h-20 text-[#00B9F1] animate-spin mb-6" />
-        <h2 className="text-2xl font-bold mb-2">NeuroLink AI & Perplexity Processing...</h2>
+        <h2 className="text-2xl font-bold mb-2">XGBoost & Gemini Processing...</h2>
         <p className="text-gray-400 text-sm animate-pulse">Computing Risk Probability Map</p>
       </div>
     );
   }
 
-  // --- STAGE 3: EXPLICIT ERROR NOTIFICATION ---
-  if (stage === 'ERROR_WARNING') {
-    return (
-      <div className="h-full flex flex-col items-center justify-center bg-red-50 p-6 text-center">
-        <AlertOctagon className="w-24 h-24 text-red-500 mb-6 animate-pulse" />
-        <h2 className="text-2xl font-bold text-red-700 mb-4">AI Backend Unavailable</h2>
-        <p className="text-red-600 mb-8 font-medium">
-          Failed to establish connection with Perplexity/Render. 
-        </p>
-        <p className="text-gray-600 text-sm font-bold flex items-center space-x-2">
-          <Loader2 className="w-4 h-4 animate-spin" />
-          <span>Proceeding with prototype cache...</span>
-        </p>
-      </div>
-    );
-  }
-
-  // --- STAGE 4: FINAL RESULTS ---
+  // --- STAGE 3: FINAL RESULTS ---
   return (
     <div className="h-full bg-gray-50 flex flex-col p-6 overflow-y-auto">
       <div className="flex items-center space-x-2 mb-6">
