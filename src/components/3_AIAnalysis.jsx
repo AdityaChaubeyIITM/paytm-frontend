@@ -119,7 +119,7 @@ export default function AIAnalysis({ onNext, profileType, updateProfileData }) {
     return (
       <div className="h-full flex flex-col items-center justify-center bg-gray-900 text-white p-6 text-center">
         <Loader2 className="w-20 h-20 text-[#00B9F1] animate-spin mb-6" />
-        <h2 className="text-2xl font-bold mb-2">XGBoost & Gemini Processing...</h2>
+        <h2 className="text-2xl font-bold mb-2">XGBoost & Perplexity Processing...</h2>
         <p className="text-gray-400 text-sm animate-pulse">Computing Risk Probability Map</p>
       </div>
     );
@@ -132,7 +132,7 @@ export default function AIAnalysis({ onNext, profileType, updateProfileData }) {
         <AlertOctagon className="w-24 h-24 text-red-500 mb-6 animate-pulse" />
         <h2 className="text-2xl font-bold text-red-700 mb-4">AI Backend Unavailable</h2>
         <p className="text-red-600 mb-8 font-medium">
-          Failed to establish connection with Gemini/Render. 
+          Failed to establish connection with Perplexity/Render. 
         </p>
         <p className="text-gray-600 text-sm font-bold flex items-center space-x-2">
           <Loader2 className="w-4 h-4 animate-spin" />
